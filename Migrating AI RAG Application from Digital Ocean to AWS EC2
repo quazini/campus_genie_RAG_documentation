@@ -1,0 +1,99 @@
+# Migrating AI RAG Application from Digital Ocean to AWS EC2
+
+## Overview
+This document outlines the migration process of our AI RAG application from Digital Ocean to AWS EC2, upgrading from a basic droplet to a GPU-enabled instance for improved performance.
+
+## Migration Details
+
+### Source Environment (Digital Ocean)
+- **Instance Type**: Basic Droplet
+- **Specifications**: 2 vCPUs, 2GB RAM, 50GB SSD
+- **Operating System**: Ubuntu
+- **Database**: MySQL service
+- **Application Stack**: 
+  - Streamlit-based RAG application
+  - React dashboard and website
+
+### Target Environment (AWS EC2)
+- **Instance Type**: g4dn.xlarge
+- **GPU**: NVIDIA T4 (for AI workload acceleration)
+- **Purpose**: Enhanced performance for AI/ML operations
+
+## Migration Process
+
+### 1. AWS Application Migration Service (MGN) Setup
+- Used AWS MGN (Migration Service) instead of the legacy Server Migration Service
+- **Replication Time**: ~5 minutes (surprisingly fast for a 50GB system)
+- **Method**: Direct migration without cutover (launched test instance first)
+
+### 2. Initial Migration Results
+✅ **Successful**: Application and data migration  
+❌ **Issue**: Instance failed 2/3 status checks  
+
+## Problem Encountered: Network Configuration Mismatch
+
+### Issue Description
+After migration, the EC2 instance failed status checks due to a **network configuration mismatch**. This is a common issue when migrating systems between cloud providers.
+
+**Root Cause**: The cloud-init configuration was expecting a different network interface with MAC address `ca:9d:f4:63:c8:10` than what was actually present in the AWS environment.
+
+### Error Symptoms
+- Instance passed only 2/3 system checks
+- Network interface configuration conflicts
+- Cloud-init failing to properly initialize network settings
+
+### Solution
+The issue was resolved by cleaning and reinitializing the cloud-init configuration:
+
+```bash
+# Clean existing cloud-init configuration
+sudo cloud-init clean
+
+# Reinitialize cloud-init with current environment
+sudo cloud-init init
+```
+
+### Why This Works
+- `cloud-init clean` removes cached network configurations from the previous environment
+- `cloud-init init` detects and configures the actual network interfaces available in AWS
+- This allows the system to properly adapt to the new cloud environment
+
+## Technical Configuration Changes
+
+### Instance Upgrade
+- **Before**: 2 vCPUs, 2GB RAM (Digital Ocean)
+- **After**: g4dn.xlarge with GPU capabilities (AWS EC2)
+
+### Benefits of Migration
+1. **GPU Acceleration**: Access to NVIDIA T4 GPU for AI/ML workloads
+2. **Better Performance**: Enhanced compute resources for RAG operations
+3. **AWS Ecosystem**: Access to additional AWS services and integrations
+4. **Scalability**: Easier horizontal and vertical scaling options
+
+## Lessons Learned
+
+### Common Migration Gotchas
+1. **Network Interface Mismatch**: Always expect network configuration issues when migrating between cloud providers
+2. **Cloud-init Dependencies**: Migrated systems often retain cloud-init configs from source environments
+3. **Status Check Failures**: Don't panic if initial status checks fail - often fixable with configuration cleanup
+
+### Best Practices
+1. **Test Instance First**: Always launch a test instance before final cutover
+2. **Document MAC Addresses**: Note any hardware-specific configurations that might cause issues
+3. **Plan for Network Reconfiguration**: Budget time for network-related fixes post-migration
+
+## Next Steps
+- [ ] Complete final cutover from test instance to production
+- [ ] Optimize GPU utilization for RAG application
+- [ ] Implement monitoring for the new environment
+- [ ] Update application configuration for AWS-specific optimizations
+
+## Migration Timeline
+- **Planning**: Initial setup of AWS MGN
+- **Replication**: ~5 minutes
+- **Issue Resolution**: ~30 minutes (network config fix)
+- **Testing**: Ongoing
+
+---
+
+*This migration successfully upgraded our AI RAG application infrastructure while maintaining full functionality and providing significant performance improvements through GPU acceleration.*
